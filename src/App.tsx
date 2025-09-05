@@ -995,6 +995,7 @@ const CMS = () => {
       setShowEventForm(false);
       setEditingEventItem(null);
       clearEventForm();
+
     } catch (error) {
       console.error("Error submitting event:", error);
       alert("Something went wrong while saving the event.");
