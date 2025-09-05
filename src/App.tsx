@@ -904,7 +904,6 @@ const CMS = () => {
           return {
             id: gallery.id,
             cover_image: "http://127.0.0.1:8000/" + gallery.cover_image,
-            description: gallery.description,
             alt: gallery.name,
             name: gallery.name,
           };
@@ -1040,7 +1039,7 @@ const CMS = () => {
           });
         }
 
-        const response = await axios.post(
+        const response = await axios.put(
           `http://127.0.0.1:8000/api/gallery/${editingGalleryItem.id}`,
           formData,
           { headers: { "Content-Type": "multipart/form-data" } }
@@ -1078,8 +1077,8 @@ const CMS = () => {
             imagesFormData.append("gallery_images", image);
           });
 
-          await axios.post(
-            `http://127.0.0.1:8000/api/gallery/${newGalleryId}/images`,
+          await axios.put(
+            `http://127.0.0.1:8000/api/gallery/${newGalleryId}`,
             imagesFormData,
             { headers: { "Content-Type": "multipart/form-data" } }
           );
