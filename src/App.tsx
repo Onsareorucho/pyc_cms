@@ -503,38 +503,28 @@ const MusicSectionContent = ({
 };
 
 // Galleries Section Component
-// You'll need to import the Edit icon with your other icons:
-// import { Image, Plus, Trash2, X, Save, Edit } from "lucide-react";
-
 const GalleriesSectionContent = ({
   galleries,
   showGalleryForm,
   setShowGalleryForm,
+  editingItem,
+  setEditingItem,
   galleryForm,
   setGalleryForm,
   handleGallerySubmit,
   handleDelete,
+  startEdit,
   openGalleryForm,
 }) => {
-  // Debug: Track galleryForm changes
-  React.useEffect(() => {
-    console.log('=== GALLERY FORM STATE CHANGED ===');
-    console.log('galleryForm:', galleryForm);
-    console.log('gallery_images count:', galleryForm.gallery_images?.length || 0);
-  }, [galleryForm]);
-
-  // Debug: Track showGalleryForm changes
-  React.useEffect(() => {
-    console.log('=== SHOW GALLERY FORM CHANGED ===');
-    console.log('showGalleryForm:', showGalleryForm);
-  }, [showGalleryForm]);
-  // Function to handle multiple image selection
+  // Function to handle multiple image selection - now appends to existing images
   const handleMultipleImageUpload = (e) => {
     const files = Array.from(e.target.files);
     setGalleryForm((prev) => ({
       ...prev,
-      gallery_images: files, // store array of File objects
+      gallery_images: [...(prev.gallery_images || []), ...files], // Append new files to existing ones
     }));
+    // Clear the input so user can select the same files again if needed
+    e.target.value = '';
   };
 
   // Function to remove a selected image from the gallery images
@@ -585,12 +575,20 @@ const GalleriesSectionContent = ({
                 alt={gallery.alt}
                 className="w-full h-48 object-cover"
               />
-              <button
-                onClick={() => handleDelete(gallery.id)}
-                className="absolute top-4 right-4 p-2 rounded-full bg-red-500 bg-opacity-80 text-white border-none cursor-pointer hover:bg-opacity-100 transition-all duration-200"
-              >
-                <Trash2 size={16} className="text-white" />
-              </button>
+              <div className="absolute top-4 right-4 flex gap-2">
+                <button
+                  onClick={() => startEdit(gallery)}
+                  className="p-2 rounded-full bg-blue-500 bg-opacity-80 text-white border-none cursor-pointer hover:bg-opacity-100 transition-all duration-200"
+                >
+                  <Edit size={16} />
+                </button>
+                <button
+                  onClick={() => handleDelete(gallery.id)}
+                  className="p-2 rounded-full bg-red-500 bg-opacity-80 text-white border-none cursor-pointer hover:bg-opacity-100 transition-all duration-200"
+                >
+                  <Trash2 size={16} className="text-white" />
+                </button>
+              </div>
               {/* Display image count if gallery has images */}
               {gallery.image_count && (
                 <div className="absolute bottom-4 right-4 px-3 py-1 rounded-full bg-black bg-opacity-70 text-white text-sm font-medium">
@@ -613,9 +611,14 @@ const GalleriesSectionContent = ({
           <div className="bg-white rounded-3xl max-w-4xl w-full max-h-screen overflow-auto text-gray-800">
             <div className="p-8">
               <div className="flex justify-between items-center mb-8">
-                <h3 className="text-2xl font-bold mb-0">Create New Gallery</h3>
+                <h3 className="text-2xl font-bold mb-0">
+                  {editingItem ? "Edit Gallery" : "Create New Gallery"}
+                </h3>
                 <button
-                  onClick={() => setShowGalleryForm(false)}
+                  onClick={() => {
+                    setShowGalleryForm(false);
+                    setEditingItem(null);
+                  }}
                   className="p-3 bg-gray-100 border-none rounded-xl cursor-pointer hover:bg-gray-200 transition-colors duration-200"
                 >
                   <X size={24} />
@@ -699,14 +702,14 @@ const GalleriesSectionContent = ({
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-base focus:border-blue-500 focus:outline-none transition-colors duration-200"
                   />
                   <p className="text-sm text-gray-600 mt-1">
-                    You can select multiple images at once. Each selection will be added to your gallery.
+                    You can select multiple images at once. Click "Choose Files" again to add more images to your selection.
                   </p>
 
                   {/* Preview selected gallery images */}
                   {galleryForm.gallery_images && galleryForm.gallery_images.length > 0 && (
                     <div className="mt-4">
                       <p className="text-sm font-medium mb-3">
-                        Selected Images ({galleryForm.gallery_images.length}) - Debug: Check console for logs
+                        Selected Images ({galleryForm.gallery_images.length})
                       </p>
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                         {galleryForm.gallery_images.map((file, index) => (
@@ -735,7 +738,10 @@ const GalleriesSectionContent = ({
                 <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
                   <button
                     type="button"
-                    onClick={() => setShowGalleryForm(false)}
+                    onClick={() => {
+                      setShowGalleryForm(false);
+                      setEditingItem(null);
+                    }}
                     className="px-6 py-3 border-2 border-gray-200 rounded-xl bg-white cursor-pointer font-medium hover:bg-gray-50 transition-colors duration-200"
                   >
                     Cancel
@@ -745,7 +751,7 @@ const GalleriesSectionContent = ({
                     className="flex items-center gap-2 px-8 py-3 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white border-none font-bold cursor-pointer hover:shadow-lg transition-all duration-300"
                   >
                     <Save size={20} />
-                    Create Gallery
+                    {editingItem ? "Update Gallery" : "Create Gallery"}
                   </button>
                 </div>
               </div>
@@ -1011,58 +1017,84 @@ const CMS = () => {
       alert("Something went wrong while saving the music.");
     }
   };
-const handleGallerySubmit = async (e) => {
-  e.preventDefault();
-  try {
-    const formData = new FormData();
-    formData.append("name", galleryForm.name);
-    formData.append("description", galleryForm.description);
-    
-    // Handle cover image
-    if (galleryForm.cover_image instanceof File) {
-      formData.append("cover_image", galleryForm.cover_image);
-    }
-    
-    // Handle multiple gallery images
-    if (galleryForm.gallery_images && galleryForm.gallery_images.length > 0) {
-      galleryForm.gallery_images.forEach((image, index) => {
-        formData.append("gallery_images", image); // or `gallery_images[${index}]` depending on your backend
-      });
-    }
 
-    let response;
-    if (editingGalleryItem) {
-      // 🔄 Update existing gallery
-      response = await axios.put(
-        `http://127.0.0.1:8000/api/gallery/${editingGalleryItem.id}`,
-        formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
-      setGalleries((prev) =>
-        prev.map((item) =>
-          item.id === editingGalleryItem.id ? response.data : item
-        )
-      );
-    } else {
-      // ➕ Create new gallery
-      response = await axios.post(
-        "http://127.0.0.1:8000/api/gallery",
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
+  const handleGallerySubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingGalleryItem) {
+        // 🔄 Update existing gallery
+        const formData = new FormData();
+        formData.append("name", galleryForm.name);
+        formData.append("description", galleryForm.description);
+        
+        // Handle cover image only if a new one is selected
+        if (galleryForm.cover_image instanceof File) {
+          formData.append("cover_image", galleryForm.cover_image);
         }
-      );
-      setGalleries((prev) => [...prev, response.data]);
+        
+        // Handle gallery images if any new ones are selected
+        if (galleryForm.gallery_images && galleryForm.gallery_images.length > 0) {
+          galleryForm.gallery_images.forEach((image) => {
+            formData.append("gallery_images", image);
+          });
+        }
+
+        const response = await axios.put(
+          `http://127.0.0.1:8000/api/gallery/${editingGalleryItem.id}`,
+          formData,
+          { headers: { "Content-Type": "multipart/form-data" } }
+        );
+        
+        setGalleries((prev) =>
+          prev.map((item) =>
+            item.id === editingGalleryItem.id ? response.data : item
+          )
+        );
+      } else {
+        // ➕ Create new gallery - Two-step process
+        
+        // Step 1: Create gallery with basic info and cover image
+        const basicFormData = new FormData();
+        basicFormData.append("name", galleryForm.name);
+        basicFormData.append("description", galleryForm.description);
+        
+        if (galleryForm.cover_image instanceof File) {
+          basicFormData.append("cover_image", galleryForm.cover_image);
+        }
+
+        const createResponse = await axios.post(
+          "http://127.0.0.1:8000/api/gallery",
+          basicFormData,
+          { headers: { "Content-Type": "multipart/form-data" } }
+        );
+
+        const newGalleryId = createResponse.data.id;
+        
+        // Step 2: Upload gallery images if any exist
+        if (galleryForm.gallery_images && galleryForm.gallery_images.length > 0) {
+          const imagesFormData = new FormData();
+          galleryForm.gallery_images.forEach((image) => {
+            imagesFormData.append("gallery_images", image);
+          });
+
+          await axios.put(
+            `http://127.0.0.1:8000/api/gallery/${newGalleryId}`,
+            imagesFormData,
+            { headers: { "Content-Type": "multipart/form-data" } }
+          );
+        }
+        
+        setGalleries((prev) => [...prev, createResponse.data]);
+      }
+      
+      setShowGalleryForm(false);
+      setEditingGalleryItem(null);
+      clearGalleryForm();
+    } catch (error) {
+      console.error("Error submitting gallery:", error);
+      alert("Something went wrong while saving the gallery.");
     }
-    
-    setShowGalleryForm(false);
-    setEditingGalleryItem(null);
-    clearGalleryForm();
-  } catch (error) {
-    console.error("Error submitting gallery:", error);
-    alert("Something went wrong while saving the gallery.");
-  }
-};
+  };
 
   const clearEventForm = () => {
     setEventForm({
@@ -1090,15 +1122,14 @@ const handleGallerySubmit = async (e) => {
     });
   };
 
-const clearGalleryForm = () => {
-  setGalleryForm(prev => ({ 
-    name: "", 
-    description: "", 
-    cover_image: null,
-    // Preserve gallery_images if form is already open
-    gallery_images: showGalleryForm ? (prev.gallery_images || []) : []
-  }));
-};
+  const clearGalleryForm = () => {
+    setGalleryForm({ 
+      name: "", 
+      description: "", 
+      cover_image: null,
+      gallery_images: []
+    });
+  };
 
   const handleEventDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this event?")) return;
@@ -1120,10 +1151,10 @@ const clearGalleryForm = () => {
       await axios.delete(`http://127.0.0.1:8000/api/music/${id}`);
 
       // Update state only after successful delete
-      setEvents((prev) => prev.filter((item) => item.id !== id));
+      setMusic((prev) => prev.filter((item) => item.id !== id));
     } catch (error) {
-      console.error("Error deleting event:", error);
-      alert("Something went wrong while deleting the event.");
+      console.error("Error deleting music:", error);
+      alert("Something went wrong while deleting the music.");
     }
   };
 
@@ -1134,10 +1165,10 @@ const clearGalleryForm = () => {
       await axios.delete(`http://127.0.0.1:8000/api/gallery/${id}`);
 
       // Update state only after successful delete
-      setEvents((prev) => prev.filter((item) => item.id !== id));
+      setGalleries((prev) => prev.filter((item) => item.id !== id));
     } catch (error) {
-      console.error("Error deleting event:", error);
-      alert("Something went wrong while deleting the event.");
+      console.error("Error deleting gallery:", error);
+      alert("Something went wrong while deleting the gallery.");
     }
   };
 
@@ -1171,6 +1202,17 @@ const clearGalleryForm = () => {
     setShowMusicForm(true);
   };
 
+  const startGalleryEdit = (gallery) => {
+    setEditingGalleryItem(gallery);
+    setGalleryForm({
+      name: gallery.name || "",
+      description: gallery.description || "",
+      cover_image: null, // Don't pre-populate file inputs
+      gallery_images: [], // Start with empty array for new images
+    });
+    setShowGalleryForm(true);
+  };
+
   const openEventForm = () => {
     clearEventForm();
     setEditingEventItem(null);
@@ -1183,12 +1225,11 @@ const clearGalleryForm = () => {
     setShowMusicForm(true);
   };
 
-const openGalleryForm = () => {
-  if (!showGalleryForm) {
-    clearGalleryForm(); // Only clear when opening fresh
-  }
-  setShowGalleryForm(true);
-};
+  const openGalleryForm = () => {
+    clearGalleryForm();
+    setEditingGalleryItem(null);
+    setShowGalleryForm(true);
+  };
 
   const navigationSections = [
     { id: "events", label: "Events", icon: Calendar },
@@ -1236,10 +1277,13 @@ const openGalleryForm = () => {
             galleries={galleries}
             showGalleryForm={showGalleryForm}
             setShowGalleryForm={setShowGalleryForm}
+            editingItem={editingGalleryItem}
+            setEditingItem={setEditingGalleryItem}
             galleryForm={galleryForm}
             setGalleryForm={setGalleryForm}
             handleGallerySubmit={handleGallerySubmit}
             handleDelete={handleGalleryDelete}
+            startEdit={startGalleryEdit}
             openGalleryForm={openGalleryForm}
           />
         );
