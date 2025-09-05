@@ -13,7 +13,6 @@ import {
   Trash2,
   Save,
   X,
-  
 } from "lucide-react";
 import axios from "axios";
 
@@ -94,7 +93,7 @@ const EventsSectionContent = ({
                   onClick={() => handleDelete(event.id)}
                   className="p-3 rounded-xl bg-red-100 text-red-600 border-none cursor-pointer hover:bg-red-200 transition-colors duration-200"
                 >
-                  <Trash2 size={16} className="" />
+                  <Trash2 size={16} />
                 </button>
               </div>
             </div>
@@ -511,27 +510,37 @@ const GalleriesSectionContent = ({
   setEditingItem,
   galleryForm,
   setGalleryForm,
+  existingGalleryData,
+  setExistingGalleryData,
   handleGallerySubmit,
   handleDelete,
   startEdit,
   openGalleryForm,
 }) => {
-  // Function to handle multiple image selection - now appends to existing images
+  // Function to handle multiple image selection - appends to existing images
   const handleMultipleImageUpload = (e) => {
     const files = Array.from(e.target.files);
     setGalleryForm((prev) => ({
       ...prev,
-      gallery_images: [...(prev.gallery_images || []), ...files], // Append new files to existing ones
+      gallery_images: [...(prev.gallery_images || []), ...files],
     }));
-    // Clear the input so user can select the same files again if needed
     e.target.value = '';
   };
 
-  // Function to remove a selected image from the gallery images
-  const removeGalleryImage = (indexToRemove) => {
+  // Function to remove a newly selected image
+  const removeNewGalleryImage = (indexToRemove) => {
     setGalleryForm((prev) => ({
       ...prev,
       gallery_images: prev.gallery_images?.filter((_, index) => index !== indexToRemove) || [],
+    }));
+  };
+
+  // Function to mark an existing image for removal
+  const removeExistingImage = (imageId) => {
+    setExistingGalleryData((prev) => ({
+      ...prev,
+      images_to_remove: [...(prev.images_to_remove || []), imageId],
+      existing_images: prev.existing_images.filter(img => img.image_id !== imageId),
     }));
   };
 
@@ -586,10 +595,9 @@ const GalleriesSectionContent = ({
                   onClick={() => handleDelete(gallery.id)}
                   className="p-2 rounded-full bg-red-500 bg-opacity-80 text-white border-none cursor-pointer hover:bg-opacity-100 transition-all duration-200"
                 >
-                  <Trash2 size={16} className="text-white" />
+                  <Trash2 size={16} />
                 </button>
               </div>
-              {/* Display image count if gallery has images */}
               {gallery.image_count && (
                 <div className="absolute bottom-4 right-4 px-3 py-1 rounded-full bg-black bg-opacity-70 text-white text-sm font-medium">
                   {gallery.image_count} photos
@@ -679,8 +687,23 @@ const GalleriesSectionContent = ({
                     }
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-base focus:border-blue-500 focus:outline-none transition-colors duration-200"
                   />
+                  
+                  {/* Show current cover image when editing */}
+                  {editingItem && existingGalleryData.cover_image_url && !galleryForm.cover_image && (
+                    <div className="mt-3">
+                      <p className="text-sm text-gray-600 mb-2">Current cover image:</p>
+                      <img
+                        src={`http://127.0.0.1:8000/${existingGalleryData.cover_image_url}`}
+                        alt="Current cover"
+                        className="w-32 h-32 object-cover rounded-lg border-2 border-gray-200"
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Show preview of new cover image */}
                   {galleryForm.cover_image && (
                     <div className="mt-3">
+                      <p className="text-sm text-gray-600 mb-2">New cover image:</p>
                       <img
                         src={getImagePreview(galleryForm.cover_image)}
                         alt="Cover preview"
@@ -705,11 +728,40 @@ const GalleriesSectionContent = ({
                     You can select multiple images at once. Click "Choose Files" again to add more images to your selection.
                   </p>
 
-                  {/* Preview selected gallery images */}
+                  {/* Show existing gallery images when editing */}
+                  {editingItem && existingGalleryData.existing_images && existingGalleryData.existing_images.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-sm font-medium mb-3">
+                        Current Gallery Images ({existingGalleryData.existing_images.length})
+                      </p>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {existingGalleryData.existing_images.map((image) => (
+                          <div key={image.image_id} className="relative">
+                            <img
+                              src={`http://127.0.0.1:8000/${image.image_url}`}
+                              alt={`Gallery image ${image.image_id}`}
+                              className="w-full h-24 object-cover rounded-lg border-2 border-gray-200"
+                            />
+                            <button
+                              onClick={() => removeExistingImage(image.image_id)}
+                              className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 text-white border-none cursor-pointer hover:bg-red-600 transition-colors duration-200"
+                            >
+                              <X size={14} />
+                            </button>
+                            <p className="text-xs text-gray-600 mt-1 truncate">
+                              Existing Image {image.image_id}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Preview newly selected gallery images */}
                   {galleryForm.gallery_images && galleryForm.gallery_images.length > 0 && (
                     <div className="mt-4">
                       <p className="text-sm font-medium mb-3">
-                        Selected Images ({galleryForm.gallery_images.length})
+                        New Images to Add ({galleryForm.gallery_images.length})
                       </p>
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                         {galleryForm.gallery_images.map((file, index) => (
@@ -720,7 +772,7 @@ const GalleriesSectionContent = ({
                               className="w-full h-24 object-cover rounded-lg border-2 border-gray-200"
                             />
                             <button
-                              onClick={() => removeGalleryImage(index)}
+                              onClick={() => removeNewGalleryImage(index)}
                               className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 text-white border-none cursor-pointer hover:bg-red-600 transition-colors duration-200"
                             >
                               <X size={14} />
@@ -762,7 +814,6 @@ const GalleriesSectionContent = ({
     </>
   );
 };
-
 
 // Main CMS Component
 const CMS = () => {
@@ -808,13 +859,17 @@ const CMS = () => {
     cover_image: null,
     gallery_images: [],
   });
+  const [existingGalleryData, setExistingGalleryData] = useState({
+    cover_image_url: "",
+    existing_images: [],
+    images_to_remove: [],
+  });
 
   function formatDuration(seconds) {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const remainingSeconds = seconds % 60;
 
-    // Pad with zeros to ensure 2 digits
     const paddedMinutes = minutes.toString().padStart(2, "0");
     const paddedSeconds = remainingSeconds.toString().padStart(2, "0");
 
@@ -827,17 +882,14 @@ const CMS = () => {
   }
 
   useEffect(() => {
+    // Fetch Events
     fetch("http://127.0.0.1:8000/api/events", {
-      headers: {
-        Accept: "application/json",
-      },
+      headers: { Accept: "application/json" },
     })
       .then((res) => res.json())
       .then((data) => {
-        // Transform API data to match your dummy format
         const formattedEvents = data.map((event) => {
           const startDate = new Date(event.start_time);
-
           return {
             id: event.id,
             name: event.name,
@@ -852,77 +904,63 @@ const CMS = () => {
               hour12: true,
             }),
             location: event.location,
-            description: event.short_description,
+            short_description: event.short_description,
             category: event.category,
             image: event.link_to_image,
             long_description: event.long_description,
+            start_time: event.start_time,
+            end_time: event.end_time,
           };
         });
-
         setEvents(formattedEvents);
       })
-      .catch((error) => {
-        console.error("Error fetching events:", error);
-      });
+      .catch((error) => console.error("Error fetching events:", error));
 
+    // Fetch Music
     fetch("http://127.0.0.1:8000/api/music", {
-      headers: {
-        Accept: "application/json",
-      },
+      headers: { Accept: "application/json" },
     })
       .then((res) => res.json())
       .then((data) => {
-        // Transform API data to match your dummy format
-        const formattedEvents = data.map((music) => {
-          return {
-            id: music.id,
-            title: music.title,
-            artist: music.artist,
-            duration: formatDuration(music.duration),
-            category: music.category,
-            description: music.description,
-            src: music.link_to_music,
-            cover: music.cover_image,
-          };
-        });
-
-        setMusic(formattedEvents);
+        const formattedMusic = data.map((music) => ({
+          id: music.id,
+          title: music.title,
+          artist: music.artist,
+          duration: formatDuration(music.duration),
+          category: music.category,
+          description: music.description,
+          src: music.link_to_music,
+          cover_image: music.cover_image,
+          media_type: music.media_type,
+          link_to_music: music.link_to_music,
+        }));
+        setMusic(formattedMusic);
       })
-      .catch((error) => {
-        console.error("Error fetching events:", error);
-      });
+      .catch((error) => console.error("Error fetching music:", error));
 
+    // Fetch Galleries
     fetch("http://127.0.0.1:8000/api/galleries", {
-      headers: {
-        Accept: "application/json",
-      },
+      headers: { Accept: "application/json" },
     })
       .then((res) => res.json())
       .then((data) => {
-        // Transform API data to match your dummy format
-        const formattedEvents = data.map((gallery) => {
-          return {
-            id: gallery.id,
-            cover_image: "http://127.0.0.1:8000/" + gallery.cover_image,
-            alt: gallery.name,
-            name: gallery.name,
-          };
-        });
-
-        setGalleries(formattedEvents);
+        const formattedGalleries = data.map((gallery) => ({
+          id: gallery.id,
+          cover_image: "http://127.0.0.1:8000/" + gallery.cover_image,
+          description: gallery.description,
+          alt: gallery.name,
+          name: gallery.name,
+        }));
+        setGalleries(formattedGalleries);
       })
-      .catch((error) => {
-        console.error("Error fetching events:", error);
-      });
+      .catch((error) => console.error("Error fetching galleries:", error));
   }, []);
 
   // Event handlers
   const handleEventSubmit = async (e) => {
     e.preventDefault();
-
     try {
       if (editingEventItem) {
-        // Update event
         const response = await axios.put(
           `http://127.0.0.1:8000/api/events/${editingEventItem.id}`,
           {
@@ -936,14 +974,12 @@ const CMS = () => {
             link_to_image: eventForm.link_to_image,
           }
         );
-
         setEvents((prev) =>
           prev.map((event) =>
-            event.id === editingEventItem.id ? response.data : event
+            event.id === editingEventItem.id ? { ...event, ...response.data } : event
           )
         );
       } else {
-        // Create new event
         const response = await axios.post("http://127.0.0.1:8000/api/events", {
           name: eventForm.name,
           category: eventForm.category,
@@ -954,10 +990,8 @@ const CMS = () => {
           end_time: eventForm.end_time,
           link_to_image: eventForm.link_to_image,
         });
-
         setEvents((prev) => [...prev, response.data]);
       }
-
       setShowEventForm(false);
       setEditingEventItem(null);
       clearEventForm();
@@ -969,10 +1003,8 @@ const CMS = () => {
 
   const handleMusicSubmit = async (e) => {
     e.preventDefault();
-
     try {
       if (editingMusicItem) {
-        // Update existing music item
         const response = await axios.put(
           `http://127.0.0.1:8000/api/music/${editingMusicItem.id}`,
           {
@@ -986,14 +1018,12 @@ const CMS = () => {
             duration: musicForm.duration,
           }
         );
-
         setMusic((prev) =>
           prev.map((item) =>
-            item.id === editingMusicItem.id ? response.data : item
+            item.id === editingMusicItem.id ? { ...item, ...response.data } : item
           )
         );
       } else {
-        // Create new music item
         const response = await axios.post("http://127.0.0.1:8000/api/music", {
           title: musicForm.title,
           cover_image: musicForm.cover_image,
@@ -1004,11 +1034,8 @@ const CMS = () => {
           artist: musicForm.artist,
           duration: musicForm.duration,
         });
-
         setMusic((prev) => [...prev, response.data]);
       }
-
-      // Reset form state
       setShowMusicForm(false);
       setEditingMusicItem(null);
       clearMusicForm();
@@ -1022,24 +1049,28 @@ const CMS = () => {
     e.preventDefault();
     try {
       if (editingGalleryItem) {
-        // 🔄 Update existing gallery
+        // Update existing gallery
         const formData = new FormData();
         formData.append("name", galleryForm.name);
         formData.append("description", galleryForm.description);
         
-        // Handle cover image only if a new one is selected
         if (galleryForm.cover_image instanceof File) {
           formData.append("cover_image", galleryForm.cover_image);
         }
         
-        // Handle gallery images if any new ones are selected
         if (galleryForm.gallery_images && galleryForm.gallery_images.length > 0) {
           galleryForm.gallery_images.forEach((image) => {
             formData.append("gallery_images", image);
           });
         }
+        
+        if (existingGalleryData.images_to_remove && existingGalleryData.images_to_remove.length > 0) {
+          existingGalleryData.images_to_remove.forEach((imageId) => {
+            formData.append("remove_image_ids", imageId);
+          });
+        }
 
-        const response = await axios.put(
+        const response = await axios.post(
           `http://127.0.0.1:8000/api/gallery/${editingGalleryItem.id}`,
           formData,
           { headers: { "Content-Type": "multipart/form-data" } }
@@ -1047,13 +1078,16 @@ const CMS = () => {
         
         setGalleries((prev) =>
           prev.map((item) =>
-            item.id === editingGalleryItem.id ? response.data : item
+            item.id === editingGalleryItem.id ? {
+              ...item,
+              name: response.data.name,
+              description: response.data.description,
+              cover_image: `http://127.0.0.1:8000/${response.data.cover_image}`,
+            } : item
           )
         );
       } else {
-        // ➕ Create new gallery - Two-step process
-        
-        // Step 1: Create gallery with basic info and cover image
+        // Create new gallery - Two-step process
         const basicFormData = new FormData();
         basicFormData.append("name", galleryForm.name);
         basicFormData.append("description", galleryForm.description);
@@ -1070,21 +1104,26 @@ const CMS = () => {
 
         const newGalleryId = createResponse.data.id;
         
-        // Step 2: Upload gallery images if any exist
         if (galleryForm.gallery_images && galleryForm.gallery_images.length > 0) {
           const imagesFormData = new FormData();
           galleryForm.gallery_images.forEach((image) => {
             imagesFormData.append("gallery_images", image);
           });
 
-          await axios.put(
-            `http://127.0.0.1:8000/api/gallery/${newGalleryId}`,
+          await axios.post(
+            `http://127.0.0.1:8000/api/gallery/${newGalleryId}/images`,
             imagesFormData,
             { headers: { "Content-Type": "multipart/form-data" } }
           );
         }
         
-        setGalleries((prev) => [...prev, createResponse.data]);
+        setGalleries((prev) => [...prev, {
+          id: createResponse.data.id,
+          name: createResponse.data.name,
+          description: createResponse.data.description,
+          cover_image: `http://127.0.0.1:8000/${createResponse.data.cover_image}`,
+          alt: createResponse.data.name,
+        }]);
       }
       
       setShowGalleryForm(false);
@@ -1129,15 +1168,17 @@ const CMS = () => {
       cover_image: null,
       gallery_images: []
     });
+    setExistingGalleryData({
+      cover_image_url: "",
+      existing_images: [],
+      images_to_remove: [],
+    });
   };
 
   const handleEventDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this event?")) return;
-
     try {
       await axios.delete(`http://127.0.0.1:8000/api/events/${id}`);
-
-      // Update state only after successful delete
       setEvents((prev) => prev.filter((item) => item.id !== id));
     } catch (error) {
       console.error("Error deleting event:", error);
@@ -1149,8 +1190,6 @@ const CMS = () => {
     if (!window.confirm("Are you sure you want to delete this music?")) return;
     try {
       await axios.delete(`http://127.0.0.1:8000/api/music/${id}`);
-
-      // Update state only after successful delete
       setMusic((prev) => prev.filter((item) => item.id !== id));
     } catch (error) {
       console.error("Error deleting music:", error);
@@ -1159,12 +1198,9 @@ const CMS = () => {
   };
 
   const handleGalleryDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this gallery?"))
-      return;
+    if (!window.confirm("Are you sure you want to delete this gallery?")) return;
     try {
       await axios.delete(`http://127.0.0.1:8000/api/gallery/${id}`);
-
-      // Update state only after successful delete
       setGalleries((prev) => prev.filter((item) => item.id !== id));
     } catch (error) {
       console.error("Error deleting gallery:", error);
@@ -1202,14 +1238,41 @@ const CMS = () => {
     setShowMusicForm(true);
   };
 
-  const startGalleryEdit = (gallery) => {
+  const startGalleryEdit = async (gallery) => {
     setEditingGalleryItem(gallery);
-    setGalleryForm({
-      name: gallery.name || "",
-      description: gallery.description || "",
-      cover_image: null, // Don't pre-populate file inputs
-      gallery_images: [], // Start with empty array for new images
-    });
+    
+    try {
+      const response = await axios.get(`http://127.0.0.1:8000/api/gallery/${gallery.id}`);
+      const fullGalleryData = response.data;
+      
+      setGalleryForm({
+        name: fullGalleryData.name || "",
+        description: fullGalleryData.description || "",
+        cover_image: null,
+        gallery_images: [],
+      });
+      
+      setExistingGalleryData({
+        cover_image_url: fullGalleryData.cover_image || "",
+        existing_images: fullGalleryData.gallery_images || [],
+        images_to_remove: [],
+      });
+      
+    } catch (error) {
+      console.error("Error fetching gallery details:", error);
+      setGalleryForm({
+        name: gallery.name || "",
+        description: gallery.description || "",
+        cover_image: null,
+        gallery_images: [],
+      });
+      setExistingGalleryData({
+        cover_image_url: "",
+        existing_images: [],
+        images_to_remove: [],
+      });
+    }
+    
     setShowGalleryForm(true);
   };
 
@@ -1281,6 +1344,8 @@ const CMS = () => {
             setEditingItem={setEditingGalleryItem}
             galleryForm={galleryForm}
             setGalleryForm={setGalleryForm}
+            existingGalleryData={existingGalleryData}
+            setExistingGalleryData={setExistingGalleryData}
             handleGallerySubmit={handleGallerySubmit}
             handleDelete={handleGalleryDelete}
             startEdit={startGalleryEdit}
