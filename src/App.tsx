@@ -1060,21 +1060,32 @@ const CMS = () => {
         
         if (galleryForm.gallery_images && galleryForm.gallery_images.length > 0) {
           galleryForm.gallery_images.forEach((image) => {
-            formData.append("gallery_images", image);
-          });
-        }
-        
-        if (existingGalleryData.images_to_remove && existingGalleryData.images_to_remove.length > 0) {
-          existingGalleryData.images_to_remove.forEach((imageId) => {
-            formData.append("remove_image_ids", imageId);
-          });
-        }
-
-        const response = await axios.post(
-          `http://127.0.0.1:8000/api/gallery/${editingGalleryItem.id}`,
+            formData.append("files", image);
+                    const response =  axios.post(
+          `http://127.0.0.1:8000/api/gallery/${editingGalleryItem.id}/images`,
           formData,
           { headers: { "Content-Type": "multipart/form-data" } }
         );
+          });
+        }
+        
+        // if (existingGalleryData.images_to_remove && existingGalleryData.images_to_remove.length > 0) {
+        //   existingGalleryData.images_to_remove.forEach((imageId) => {
+        //     formData.append("remove_image_ids", imageId);
+        //   });
+        // }
+
+
+
+        if (existingGalleryData.images_to_remove && existingGalleryData.images_to_remove.length > 0) {
+          await Promise.all(
+            existingGalleryData.images_to_remove.map((imageId) =>
+              axios.delete(`http://127.0.0.1:8000/api/gallery/images/${imageId}`, {
+                headers: { Accept: "application/json" },
+              })
+            )
+          );
+        }
         
         setGalleries((prev) =>
           prev.map((item) =>
